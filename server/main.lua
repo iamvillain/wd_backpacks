@@ -1,5 +1,24 @@
 RSGCore = exports['rsg-core']:GetCoreObject()
-
+-- Check if the table exists
+local tableExists = exports.oxmysql:query("SHOW TABLES LIKE 'bag_positions'", function(data)
+    if data and #data > 0 then
+        print("[wd_backpacks] Table exists, you're good to go!")
+    else
+        -- If the table doesn't exist, create it
+        exports.oxmysql:execute([[
+            CREATE TABLE IF NOT EXISTS `bag_positions` (
+                `id` INT AUTO_INCREMENT PRIMARY KEY,
+                `model` VARCHAR(50) NOT NULL,
+                `pos_x` FLOAT NOT NULL,
+                `pos_y` FLOAT NOT NULL,
+                `pos_z` FLOAT NOT NULL,
+                `heading` FLOAT NOT NULL,
+                `stash_id` VARCHAR(100) NOT NULL
+            )
+        ]], {})
+        print("[wd_backpacks] Table 'bag_positions' created successfully.")
+    end
+end)
 RSGCore.Functions.CreateUseableItem('backpack', function(source, item)
     local src = source
     local Player = RSGCore.Functions.GetPlayer(src)
@@ -51,5 +70,27 @@ AddEventHandler('wd_backpacks:server:checkBackpackEmpty', function(stashId, call
         end
         
         callback(isEmpty)
+    end)
+end)
+
+-- Save Bag Position
+RegisterServerEvent('wd_backpacks:server:saveBagPosition')
+AddEventHandler('wd_backpacks:server:saveBagPosition', function(model, x, y, z, heading, stashId)
+    MySQL.Async.execute('INSERT INTO bag_positions (model, pos_x, pos_y, pos_z, heading, stash_id) VALUES (?, ?, ?, ?, ?, ?)', {model, x, y, z, heading, stashId})
+end)
+
+-- Remove Bag Position
+RegisterServerEvent('wd_backpacks:server:removeBagPosition')
+AddEventHandler('wd_backpacks:server:removeBagPosition', function(stashId)
+    MySQL.Async.execute('DELETE FROM bag_positions WHERE stash_id = ?', {stashId})
+end)
+
+-- Get Bag Positions
+RegisterServerEvent('wd_backpacks:server:getBagPositions')
+AddEventHandler('wd_backpacks:server:getBagPositions', function()
+    local src = source
+    
+    MySQL.Async.fetchAll('SELECT * FROM bag_positions', {}, function(result)
+        TriggerClientEvent('wd_backpacks:client:spawnBags', src, result)
     end)
 end)

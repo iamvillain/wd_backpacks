@@ -2,7 +2,18 @@ RSGCore = exports['rsg-core']:GetCoreObject()
 
 -- Add a variable to store the currently worn backpack
 local currentBackpack = nil
+if LocalPlayer.state.isLoggedIn then
+    TriggerServerEvent('wd_backpacks:server:getBagPositions')
+    print("Getting bag positions")
+end
+AddEventHandler('RSGCore:Client:OnPlayerLoaded', function()
+    Citizen.Wait(1000) -- Wait for the player to fully load
 
+    if LocalPlayer.state.isLoggedIn then
+        TriggerServerEvent('wd_backpacks:server:getBagPositions')
+        print("Getting bag positions")
+    end
+end)
 -- Place Backpack
 RegisterNetEvent('wd_backpacks:client:placeBackpack')
 AddEventHandler('wd_backpacks:client:placeBackpack', function(model, stashId)
@@ -78,6 +89,8 @@ AddEventHandler('wd_backpacks:client:placeBackpack', function(model, stashId)
 
     -- Remove the backpack item from the player's inventory
     TriggerServerEvent('wd_backpacks:server:removeBackpackItem', model, stashId)
+        -- Save the bag position to the database
+    TriggerServerEvent('wd_backpacks:server:saveBagPosition', model, x, y, z, heading, stashId)
 end)
 
 -- Lock Backpack
@@ -206,7 +219,7 @@ AddEventHandler('wd_backpacks:client:wearBackpack', function(data)
     -- Check if the player already has a backpack attached
     if currentBackpack then
         RSGCore.Functions.Notify('You are already wearing a backpack', 'error')
-        return
+        return 
     end
 
     -- Delete the backpack entity from the world
@@ -287,7 +300,7 @@ end
 function AttachBackpack(model, pos, rot, boneIndex, softping, collision, vertex, fixedRot)
     local ped = PlayerPedId()
     local bag = CreateObject(GetHashKey(model), 0, 0, 0, true, true, true)
-
+	SetEntityRotation(bag, rot, 2)
     AttachEntityToEntity(bag, ped, boneIndex, pos.x, pos.y, pos.z, rot.x, rot.y, rot.z, false, softping, collision, false, vertex, fixedRot, false, false)
 
     SetEntityAsMissionEntity(bag, true, true)
